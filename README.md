@@ -60,13 +60,38 @@ cat /proc/mdstat
 mdadm --detail /dev/md3
 ```
 
+> **⚠️ The data disk mount path changed in UniFi OS v9+ (firmware v5.x).**
+> Older firmware mounted the data RAID array at `/volume1`. Newer firmware
+> mounts it under a **UUID path** instead, e.g.
+> `/volume/2f27d08f-56be-430f-bf13-e2842c30a148`, and `/volume1` no longer
+> exists. This guide (and the Samba config) still uses `/volume1` as the
+> canonical path — on newer firmware, create a symlink so everything resolves:
+> ```bash
+> # Find where the RAID array is actually mounted
+> MD_MOUNT=$(awk '$1 == "/dev/md3" { print $2; exit }' /proc/mounts)
+> echo "RAID mounted at: $MD_MOUNT"
+> # Bridge it to the /volume1 path this guide expects
+> ln -sfn "$MD_MOUNT" /volume1
+> ```
+> The [recovery script](scripts/99-timemachine.sh) does this automatically on
+> boot, so once Step 8 is set up you don't have to remember it. Your backup
+> data lives on the RAID array regardless of the mount path — the symlink just
+> keeps the config pointing at it.
+
 ## Step 1: Install and Verify Prerequisites
 
-First, SSH into your device (replace IP address with your device's IP):
+First, SSH into your device (replace the IP address with your device's IP):
 
 ```bash
 ssh root@192.168.1.1
 ```
+
+> **Note on the IP address:** This guide uses `192.168.1.1` (the UniFi default),
+> but your device may use a different address, and a factory reset can change it.
+> Use whatever address your device actually has. Time Machine itself discovers
+> the share by mDNS name (`UDM-Pro-Max._smb._tcp.local.`), so the Mac side keeps
+> working even if the device's IP changes — only the manual SSH/CLI commands
+> below need the current IP.
 
 ### Install Samba and Avahi
 
@@ -426,13 +451,15 @@ The hook directory `/usr/lib/ubnt/hooks/system/bootup-bottom/` sits in the overl
 
 Testing against v5.0.16 revealed that firmware updates on v5.x reset the **entire overlayfs upper layer** for system paths — not just dpkg-managed files. The hook wrapper placed in `/usr/lib/ubnt/hooks/system/bootup-bottom/` was wiped. Only `/data/` (and the separate `/persistent/` partition) are preserved.
 
+A **factory reset** goes further: it also drops the `/volume1` mount and (on UniFi OS v9+) remounts the data RAID array under a UUID path such as `/volume/<uuid>` instead of `/volume1`. The recovery script handles this too — it locates the `/dev/md3` mount and re-links `/volume1` to it before restoring the share (see [The data disk mount path changed](#disk-space)).
+
 This means recovery after a firmware update requires **one manual SSH command** to bootstrap:
 
 ```bash
 ssh root@<udm-ip> bash /data/timemachine/99-timemachine.sh
 ```
 
-This is the only step needed. The script reinstalls Samba, restores all configs, restarts services, and recreates the hook wrapper — all automatically. Subsequent reboots are handled by the hook until the next firmware update.
+This is the only step needed. The script relinks `/volume1` if the mount path moved, reinstalls Samba, restores all configs, restarts services, and recreates the hook wrapper — all automatically. Subsequent reboots are handled by the hook until the next firmware update.
 
 #### The Design
 
@@ -917,6 +944,7 @@ This guide was created and tested with the following versions:
 - **Disk**: Dual 14.6TB disks in RAID-1 via mdadm (14.5TB usable)
 - **RAID Device**: `/dev/md3` (sdb5 + sdc5)
 - **RAID Status**: Both disks active [UU] for full redundancy
+- **Mount Path (UniFi OS v9+)**: RAID array mounts under `/volume/<uuid>`, not `/volume1` — bridged with a `/volume1` symlink (see [Disk Space](#disk-space))
 
 ### macOS Environment
 - **Tested macOS Version**: macOS 26.1 (Build 25B78)
@@ -931,7 +959,7 @@ This guide was created and tested with the following versions:
 
 ---
 
-**Last Updated**: January 10, 2026
+**Last Updated**: July 17, 2026
 
 If you found this guide helpful, please share it with others who might benefit from using their UDM Pro or USM Pro Max as a Time Machine backup destination!
 

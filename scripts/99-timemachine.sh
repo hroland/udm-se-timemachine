@@ -16,6 +16,7 @@
 BACKUP_DIR="/data/timemachine"
 HOOK_DIR="/usr/lib/ubnt/hooks/system/bootup-bottom"
 HOOK_WRAPPER="${HOOK_DIR}/99-timemachine.sh"
+SHARE_DIR="/volume1/timemachine"
 LOG_TAG="timemachine-boot"
 
 log() { logger -t "$LOG_TAG" "$*"; echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
@@ -23,6 +24,27 @@ log() { logger -t "$LOG_TAG" "$*"; echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 if [ ! -d "$BACKUP_DIR" ]; then
     log "ERROR: $BACKUP_DIR not found — run Step 8 setup first (see README)"
     exit 1
+fi
+
+# --- Self-heal: ensure /volume1 points at the RAID data disk ---
+# UniFi OS v9+ (UDM/USM firmware v5.x) mounts the data RAID array under a
+# UUID path (/volume/<uuid>) instead of the historical /volume1. The share
+# config and backups all reference /volume1, so bridge it with a symlink.
+# mdadm assembles the array as /dev/md3; we find wherever the kernel mounted
+# it and link /volume1 to that, so the path is stable across firmware changes.
+
+if [ ! -d "$SHARE_DIR" ]; then
+    MD_MOUNT="$(awk '$1 == "/dev/md3" { print $2; exit }' /proc/mounts)"
+    if [ -n "$MD_MOUNT" ] && [ -d "$MD_MOUNT/timemachine" ]; then
+        if [ -e /volume1 ] && [ ! -L /volume1 ]; then
+            log "WARNING: /volume1 exists and is not a symlink — leaving it alone"
+        else
+            ln -sfn "$MD_MOUNT" /volume1
+            log "Linked /volume1 -> $MD_MOUNT (RAID data disk)"
+        fi
+    else
+        log "WARNING: could not locate the RAID data disk (/dev/md3 mount); $SHARE_DIR may be unavailable"
+    fi
 fi
 
 # --- Self-heal: recreate the boot hook wrapper if it was removed ---
@@ -77,7 +99,7 @@ fi
 
 # --- Ensure correct permissions ---
 
-chown -R timemachine:timemachine /volume1/timemachine
+chown -R timemachine:timemachine "$SHARE_DIR"
 
 # --- Start or verify Samba ---
 
