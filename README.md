@@ -1,6 +1,10 @@
 # Time Machine on UniFi UDM SE
 
-This is a UDM SE–specific revision of `scttfrdmn/udm-pro-timemachine` for:
+<img width="1446" height="1084" alt="Screenshot 2026-07-18 at 14 22 10 PM of System Settings (Time Machine)" src="https://github.com/user-attachments/assets/8b1fbe69-a86b-454a-bcc1-b97a29f69067" />
+
+---
+
+This is a UDM SE–specific revision of [scttfrdmn/udm-pro-timemachine](https://github.com/scttfrdmn/udm-pro-timemachine) revised by 5.6 Sol.
 
 - UniFi OS `5.1.19`
 - ARM64 (`aarch64`)
