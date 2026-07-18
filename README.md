@@ -49,13 +49,7 @@ apt install -y samba samba-vfs-modules
 smbd --version
 ```
 
-Do **not** run any of these commands:
-
-```text
-systemctl enable avahi-daemon
-systemctl start avahi-daemon
-systemctl restart avahi-daemon
-```
+Do **NOT** run any of these commands: `# systemctl enable/start/restart avahi-daemon`
 
 UniFi launches its Avahi processes in `/os.slice/udapi-server.service`.
 
