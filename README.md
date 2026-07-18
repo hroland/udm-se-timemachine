@@ -207,11 +207,7 @@ bash -n /data/timemachine/99-timemachine.sh
 bash /data/timemachine/99-timemachine.sh
 ```
 
-The script creates this ordinary-reboot hook automatically:
-
-```text
-/usr/lib/ubnt/hooks/system/bootup-bottom/99-timemachine.sh
-```
+The script creates this ordinary-reboot hook automatically: `/usr/lib/ubnt/hooks/system/bootup-bottom/99-timemachine.sh`
 
 Check its result:
 
