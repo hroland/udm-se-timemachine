@@ -19,6 +19,7 @@ SE has only one installed data disk; there is no storage redundancy.
 ## 1. Confirm the data disk
 
 ```bash
+lsblk
 findmnt /dev/md3
 MD_MOUNT="$(findmnt -rn -S /dev/md3 -o TARGET)"
 test -n "$MD_MOUNT" && df -hT "$MD_MOUNT"
